@@ -1,22 +1,21 @@
 package example
-import scala.scalajs.js.annotation.JSExport
-import org.scalajs.dom
-import org.scalajs.dom.html
-import scala.util.Random
-import scala.concurrent.Future
-import scalajs.concurrent.JSExecutionContext.Implicits.runNow
-import scalatags.JsDom.all._
-import upickle.default._
-import upickle.Js
-import autowire._
 
-object Client extends autowire.Client[Js.Value, Reader, Writer]{
+import autowire._
+import org.scalajs.dom
+import scalatags.JsDom.all._
+import upickle.Js
+import upickle.default.{Reader, Writer, readJs, writeJs}
+
+import scala.concurrent.Future
+import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
+import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
+
+object Client extends autowire.Client[Js.Value, Reader, Writer] {
   override def doCall(req: Request): Future[Js.Value] = {
     dom.ext.Ajax.post(
       url = "/api/" + req.path.mkString("/"),
-      data = upickle.json.write(Js.Obj(req.args.toSeq:_*))
-    ).map(_.responseText)
-     .map(upickle.json.read)
+      data = upickle.json.write(Js.Obj(req.args.toSeq: _*))
+    ).map(_.responseText).map(upickle.json.read)
   }
 
   def read[Result: Reader](p: Js.Value) = readJs[Result](p)
@@ -24,11 +23,11 @@ object Client extends autowire.Client[Js.Value, Reader, Writer]{
 }
 
 
-@JSExport
+@JSExportTopLevel("ScalaJSExample")
 object ScalaJSExample {
   @JSExport
   def main(): Unit = {
-    
+
     val inputBox = input.render
     val outputBox = div.render
 
@@ -37,20 +36,19 @@ object ScalaJSExample {
         outputBox.innerHTML = ""
         outputBox.appendChild(
           ul(
-            for(path <- paths) yield {
+            for (path <- paths) yield {
               li(path)
             }
           ).render
         )
       }
     }
-    inputBox.onkeyup = {(e: dom.Event) =>
-      updateOutput()
-    }
+
+    inputBox.onkeyup = { _: dom.Event => updateOutput()}
     updateOutput()
     dom.document.body.appendChild(
       div(
-        cls:="container",
+        cls := "container",
         h1("File Browser"),
         p("Enter a file path to s"),
         inputBox,

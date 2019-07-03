@@ -1,34 +1,36 @@
 // Turn this project into a Scala.js project by importing these settings
 
-import sbt.Keys._
+/*import sbt.Keys._
 import spray.revolver.AppProcess
-import spray.revolver.RevolverPlugin.Revolver
+import spray.revolver.RevolverPlugin.Revolver*/
 
 enablePlugins(WorkbenchPlugin)
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.8"
 
 val example = crossProject.settings(
-  scalaVersion := "2.11.8",
+  scalaVersion := scalaVersion.value,
   version := "0.1-SNAPSHOT",
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "upickle" % "0.4.3",
+    "com.lihaoyi" %%% "upickle" % "0.4.4",
     "com.lihaoyi" %%% "autowire" % "0.2.6",
-    "com.lihaoyi" %%% "scalatags" % "0.6.1"
+    "com.lihaoyi" %%% "scalatags" % "0.7.0"
   )
 ).jsSettings(
   name := "Client",
   libraryDependencies ++= Seq(
-    "org.scala-js" %%% "scalajs-dom" % "0.9.1"
+    "org.scala-js" %%% "scalajs-dom" % "0.9.7"
   )
-).jvmSettings(
+)/*.jvmSettings(
   Revolver.settings:_*
-).jvmSettings(
+)*/.jvmSettings(
   name := "Server",
   libraryDependencies ++= Seq(
-    "com.typesafe.akka" %% "akka-http-experimental" % "2.4.11",
-    "com.typesafe.akka" %% "akka-actor" % "2.4.12",
-    "org.webjars" % "bootstrap" % "3.2.0"
+    "com.typesafe.akka" %% "akka-http"  % "10.1.8",
+    "com.typesafe.akka"     %% "akka-stream"      % "2.5.23",
+
+    "com.typesafe.akka" %% "akka-actor" % "2.5.23",
+    "org.webjars" % "bootstrap" % "4.3.1"
   )
 )
 
@@ -39,3 +41,6 @@ val exampleJVM = example.jvm.settings(
     (artifactPath in (exampleJS, Compile, fastOptJS)).value
   }
 )
+
+// loads the server project at sbt startup
+onLoad in Global := (onLoad in Global).value andThen {s: State => "project exampleJVM" :: s}
