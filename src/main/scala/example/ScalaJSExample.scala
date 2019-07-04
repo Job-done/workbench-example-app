@@ -15,6 +15,8 @@ case class Point(x: Int, y: Int) {
 object ScalaJSExample {
   @JSExport
   def main(canvas: html.Canvas): Unit = {
+    var cursorText = ""
+
     canvas.width = dom.window.innerWidth.toInt
     canvas.height = dom.window.innerHeight.toInt
 
@@ -65,30 +67,53 @@ object ScalaJSExample {
 
             def t = el.main.temp.asInstanceOf[Double] // 250 ... 350 °K
 
-            val screenX = (x / 180 + 1) / 2 * canvas.width
-            val screenY = canvas.height - (y / 90 + 1) / 2 * canvas.height
+            val color = {
+              def color(tScaled: Int) = {
+                (math.max(tScaled - 128, 0) * 2,
+                  (128 - math.abs(tScaled - 128)) * 2,
+                  math.max(128 - tScaled, 0) * 2)
+              }
 
-            def tScaled = ((t - 260) / 50 * 255).toInt // 0 - 255
+              val (r, g, b) = color(((t - 260) / 50 * 255).toInt) // 0 -> 255
 
-            def color(tScaled: Int) = { // 0 -> 255
-              val r = math.max(tScaled - 128, 0) * 2
-              val g = (128 - math.abs(tScaled - 128)) * 2
-              val b = math.max(128 - tScaled, 0) * 2
-              (r, g, b)
+              s"rgb($r, $g, $b)"
             }
 
-            val (r, g, b) = color(tScaled)
+            def country = el.sys.country.asInstanceOf[String]
 
-            ctx.fillStyle = s"rgb($r, $g, $b)"
+            def screenX = (x / 180 + 1) / 2 * canvas.width
+
+            def screenY = canvas.height - (y / 90 + 1) / 2 * canvas.height
+
+            ctx.fillStyle = color
             ctx.fillRect(screenX - 2, screenY - 2, 4, 4)
+
+            if (cursorText.nonEmpty) {
+              ctx.fillStyle = "black"
+              ctx.font = "24px Helvetica"
+              ctx.textAlign = "left"
+              ctx.textBaseline = "top"
+              ctx.fillText(cursorText, 32, 32)
+              cursorText = ""
+              ctx.stroke()
+            }
+
+            if (cursorText.isEmpty) {
+
+              cursorText = country + " "  + (BigDecimal((t * 100 - 27315).toInt) / 100).rounded
+              ctx.fillStyle = color
+              ctx.font = "24px Helvetica"
+              ctx.textAlign = "left"
+              ctx.textBaseline = "top"
+              ctx.fillText(cursorText, 32, 32)
+            }
           }
 
         }
       }
 
-      if (allPrefixes.hasNext)
-        run(allPrefixes.next())
-    }, 2000)
+      if (allPrefixes.hasNext) run(allPrefixes.next())
+    }, 1000)
   }
 
 }
