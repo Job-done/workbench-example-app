@@ -34,7 +34,7 @@ object ScalaJSExample {
     }
 
     dom.window.setInterval(() => {
-      def run(prefix: Seq[Char]) = {
+      def run(prefix: Seq[Char]): Unit = {
         def queryStr(query: Seq[Char]): String = {
           def owmQueryParams = scala.collection.Map[String, String](
             "type" -> "like"
@@ -61,7 +61,7 @@ object ScalaJSExample {
           // println(prefix + "\t" + xhr.responseText.length)
           val parsed = js.JSON.parse(xhr.responseText)
           //        dom.console.log(parsed)
-          println(s"${queryStr(prefix)}, ${parsed.list.length}")
+          //        println(s"${queryStr(prefix)}, ${parsed.list.length}")
           parsed.list.map { el: js.Dynamic =>
             val (x, y) = (el.coord.lon.asInstanceOf[Double], el.coord.lat.asInstanceOf[Double])
 
@@ -99,8 +99,8 @@ object ScalaJSExample {
             }
 
             if (cursorText.isEmpty) {
-
-              cursorText = country + " "  + (BigDecimal((t * 100 - 27315).toInt) / 100).rounded
+              cursorText =
+                f"""Country $country, ${BigDecimal((t * 100 - 27315).toInt) / 100}%6s °C"""
               ctx.fillStyle = color
               ctx.font = "24px Helvetica"
               ctx.textAlign = "left"
@@ -113,7 +113,7 @@ object ScalaJSExample {
       }
 
       if (allPrefixes.hasNext) run(allPrefixes.next())
-    }, 1000)
+    }, 10)
   }
 
 }
