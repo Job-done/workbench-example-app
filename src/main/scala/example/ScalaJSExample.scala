@@ -100,7 +100,7 @@ object ScalaJSExample {
 
             if (cursorText.isEmpty) {
               cursorText =
-                f"""Country $country, ${BigDecimal((t * 100 - 27315).toInt) / 100}%6s °C"""
+                f"""Country $country, ${BigDecimal((t * 100 - 27315).toInt) / 100}%6.2f °C"""
               ctx.fillStyle = color
               ctx.font = "24px Helvetica"
               ctx.textAlign = "left"
