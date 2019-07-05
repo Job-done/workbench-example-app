@@ -13,6 +13,12 @@ case class Point(x: Int, y: Int) {
 
 @JSExportTopLevel("ScalaJSExample")
 object ScalaJSExample {
+  private val execStart: Long = System.currentTimeMillis()
+
+  def logInfo(info: String): Unit = {
+    dom.console.log(f"[Info][${System.currentTimeMillis() - execStart}%5d ms]" + info)
+  }
+
   @JSExport
   def main(canvas: html.Canvas): Unit = {
     var cursorText = ""
@@ -27,13 +33,12 @@ object ScalaJSExample {
 
     val allPrefixes: Iterator[Seq[Char]] = {
       def prefixes = ('A' to 'Z').mkString
-
-      def comb(s: String) = (s * s.length).combinations(3)
+      def comb(s: String) = (s * s.length).toSeq.combinations(3)
 
       comb(prefixes).flatMap(_.toSeq.permutations.toList)
     }
 
-    dom.window.setInterval(() => {
+    lazy val interval: Int = dom.window.setInterval(() => {
       def run(prefix: Seq[Char]): Unit = {
         def queryStr(query: Seq[Char]): String = {
           def owmQueryParams = scala.collection.Map[String, String](
@@ -51,7 +56,6 @@ object ScalaJSExample {
         // OpenWeatherMap endpoint details
         def weatherBaseURL = {
           def openWeatherMapHost = "openweathermap.org"
-
           def openWeatherMapAPI = "https://api.".concat(openWeatherMapHost)
 
           openWeatherMapAPI.concat("/data/2.5/find")
@@ -80,7 +84,6 @@ object ScalaJSExample {
             }
 
             def country = el.sys.country.asInstanceOf[String]
-
             def screenX = (x / 180 + 1) / 2 * canvas.width
 
             def screenY = canvas.height - (y / 90 + 1) / 2 * canvas.height
@@ -100,7 +103,7 @@ object ScalaJSExample {
 
             if (cursorText.isEmpty) {
               cursorText =
-                f"""Country $country, ${BigDecimal((t * 100 - 27315).toInt) / 100}%6.2f °C"""
+                f"""Country $country, ${BigDecimal((t * 100 - 27315).toInt) / 100}%6s °C"""
               ctx.fillStyle = color
               ctx.font = "24px Helvetica"
               ctx.textAlign = "left"
@@ -113,7 +116,13 @@ object ScalaJSExample {
       }
 
       if (allPrefixes.hasNext) run(allPrefixes.next())
+      else {
+        dom.window.clearInterval(interval)
+        logInfo(""""That's All Folks!"""")
+      }
+
     }, 10)
+    interval
   }
 
 }
