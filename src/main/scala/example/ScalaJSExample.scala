@@ -19,8 +19,8 @@ import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 
 @JSExportTopLevel("ScalaJSExample")
 object ScalaJSExample {
-  val execStart: Long = System.currentTimeMillis()
   private type Color = Vec
+  private val execStart: Long = System.currentTimeMillis()
   private val Epsilon = 0.00001
   private val Color: Vec.type = Vec
 
