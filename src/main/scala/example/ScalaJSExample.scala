@@ -2,7 +2,6 @@ package example
 
 import org.scalajs.dom
 import org.scalajs.dom.raw.ImageData
-import org.scalajs.dom.{CanvasRenderingContext2D, html}
 
 import scala.language.{implicitConversions, postfixOps}
 import scala.math.{Pi, abs, cos, sin, sqrt, tan}
@@ -26,15 +25,15 @@ object ScalaJSExample {
   val Epsilon = 0.00001
   val Color: Vec.type = Vec
 
-  val canvas: html.Canvas = dom.document
+  val canvas: dom.html.Canvas = dom.document
     .getElementById("canvas")
-    .asInstanceOf[html.Canvas]
+    .asInstanceOf[dom.html.Canvas]
 
   canvas.width = 1024
   canvas.height = 1024
 
-  val ctx: CanvasRenderingContext2D = canvas.getContext("2d")
-    .asInstanceOf[dom.CanvasRenderingContext2D]
+  val ctx: dom.CanvasRenderingContext2D =
+    canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
 
   @JSExport
   def main(): Unit = {
@@ -77,8 +76,8 @@ object ScalaJSExample {
 
 
     val c: Canvas = new Canvas {
-      val width: Int = canvas.width
-      val height: Int = canvas.height
+      val width = math.min(canvas.width, canvas.height)
+      val height = math.min(canvas.width, canvas.height)
       val data: ImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
       def save(y: Int): Unit = {
@@ -95,15 +94,12 @@ object ScalaJSExample {
       }
     }
     s.render(c)
-    println("End")
   }
 }
 
 final case class Vec(x: Double, y: Double, z: Double) {
   def +(o: Vec) = Vec(x + o.x, y + o.y, z + o.z)
-
   def *(o: Vec) = Vec(x * o.x, y * o.y, z * o.z)
-
   def cross(o: Vec) = Vec(
     y * o.z - z * o.y,
     z * o.x - x * o.z,
@@ -111,17 +107,11 @@ final case class Vec(x: Double, y: Double, z: Double) {
   )
 
   def normalized: Color = this / magnitude
-
   def magnitude: Double = sqrt(this dot this)
-
   def /(f: Double) = Vec(x / f, y / f, z / f)
-
   def reflectThrough(normal: Vec): Color = this - normal * (this dot normal) * 2
-
   def -(o: Vec) = Vec(x - o.x, y - o.y, z - o.z)
-
   def *(f: Double) = Vec(x * f, y * f, z * f)
-
   def dot(o: Vec): Double = x * o.x + y * o.y + z * o.z
 }
 
@@ -156,8 +146,7 @@ case class Sphere(center: Vec, radius: Double) extends Form {
     val cp = center - ray.point
     val v = cp dot ray.vector
     val d = radius * radius - ((cp dot cp) - v * v)
-    if (d < 0) -1
-    else v - sqrt(d)
+    if (d < 0) -1 else v - sqrt(d)
   }
 
   def normalAt(p: Vec): Color = (p - center).normalized
@@ -166,8 +155,7 @@ case class Sphere(center: Vec, radius: Double) extends Form {
 case class Plane(point: Vec, normal: Vec.Unit) extends Form {
   def intersectionTime(ray: Ray): Double = {
     val v = ray.vector dot normal
-    if (v != 0) ((point - ray.point) dot normal) / v
-    else -1
+    if (v != 0) ((point - ray.point) dot normal) / v else -1
   }
 
   def normalAt(p: Vec): Color = normal
@@ -184,12 +172,9 @@ abstract class Surface {
 }
 
 abstract class SolidSurface extends Surface {
-  val ambientC: Double = 1.0 - specularC - lambertC
-
+  def ambientC: Double = 1.0 - specularC - lambertC
   def baseColorAt(p: Vec): Color
-
-  def specularC: Double
-
+  val specularC: Double
   def lambertC: Double
 
   def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
@@ -207,8 +192,8 @@ abstract class SolidSurface extends Surface {
         val light = scene.lightPoints(i)
         if (scene.lightIsVisible(light.center, p)) {
           val d = p - light.center
-          val dLengthSqr = d.magnitude * d.magnitude
-          val contribution = light.color * abs(d dot normal / dLengthSqr)
+          def dLengthSqr = d.magnitude * d.magnitude
+          def contribution = light.color * abs(d dot normal / dLengthSqr)
 
           lambertAmount += contribution
         }
@@ -216,7 +201,7 @@ abstract class SolidSurface extends Surface {
       b * lambertAmount * lambertC
     }
 
-    val ambient = b * ambientC
+    def ambient = b * ambientC
 
     specular + lambert + ambient
   }
@@ -224,21 +209,16 @@ abstract class SolidSurface extends Surface {
 
 case class Refractor(refractiveIndex: Double = 0.5) extends Surface {
   def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
-    val r = if ((normal dot ray.vector) < 0)
-      refractiveIndex
-    else
-      1.0 / refractiveIndex
-
+    val r = if ((normal dot ray.vector) < 0) refractiveIndex else 1.0 / refractiveIndex
     val c = (normal * -1) dot ray.vector
-
     val sqrtValue = 1 - r * r * (1 - c * c)
 
     if (sqrtValue > 0) {
-      val refracted = ray.vector * r + normal * (r * c - sqrt(sqrtValue))
+      def refracted = ray.vector * r + normal * (r * c - sqrt(sqrtValue))
       scene.rayColor(Ray(p, refracted), depth)
     } else {
-      val perp = ray.vector dot normal
-      val reflected: Vec = Vec.denormalizer(ray.vector) + normal * 2 * perp
+      def perp = ray.vector dot normal
+      def reflected: Vec = Vec.denormalizer(ray.vector) + normal * 2 * perp
       scene.rayColor(Ray(p, reflected), depth)
     }
   }
@@ -247,9 +227,7 @@ case class Refractor(refractiveIndex: Double = 0.5) extends Surface {
 case class Flat(baseColor: Color = Color(1, 1, 1),
                 specularC: Double = 0.3,
                 lambertC: Double = 0.6) extends SolidSurface {
-
   def baseColorAt(p: Vec): Color = baseColor
-
 }
 
 case class Checked(baseColor: Color = Color(1, 1, 1),
@@ -262,18 +240,14 @@ case class Checked(baseColor: Color = Color(1, 1, 1),
 
     def f(x: Double) = (abs(x) + 0.5).toInt
 
-    if ((f(v.x) + f(v.y) + f(v.z)) % 2 == 1) otherColor
-    else baseColor
+    if ((f(v.x) + f(v.y) + f(v.z)) % 2 == 1) otherColor else baseColor
   }
 }
 
 abstract class Canvas {
   def width: Int
-
   def height: Int
-
   def save(y: Int): Unit
-
   def plot(x: Int, y: Int, rgb: Color): Unit
 }
 
@@ -284,25 +258,21 @@ class Scene(objects: Array[(Form, Surface)],
             fieldOfView: Double) {
 
   def lightIsVisible(l: Vec, p: Vec): Boolean = {
-    val ray = Ray(p, l - p)
-    val length = (l - p).magnitude
-    var visible = true
-    for (i <- objects.indices) {
-      val (o, _) = objects(i)
-      val t = o.intersectionTime(ray)
-      if (t > ScalaJSExample.Epsilon && t < length - ScalaJSExample.Epsilon) visible = false
+    val (ray, length) = (Ray(p, l - p), (l - p).magnitude)
+
+    objects.forall{ case (o: Form, _: Surface) =>
+      val t: Double = o.intersectionTime(ray)
+      t <= ScalaJSExample.Epsilon || t >= length - ScalaJSExample.Epsilon
     }
-    visible
   }
 
   def render(canvas: Canvas) = {
     def fovRadians = Pi * (fieldOfView / 2.0) / 180.0
 
     val halfWidth = tan(fovRadians)
-    val halfHeight = halfWidth
+    def halfHeight = halfWidth
 
     def width = halfWidth * 2
-
     def height = halfHeight * 2
 
     def pixelWidth = width / (canvas.width - 1)
@@ -314,8 +284,8 @@ class Scene(objects: Array[(Form, Surface)],
 
     def vpUp = vpRight.cross(eye.vector).normalized
 
-    for (y <- 0 until canvas.height) {
-      // if (y % 2 == 0) await(Future(()))
+    var y = 0
+    val interval: Int = dom.window.setInterval({ () =>
       for (x <- 0 until canvas.width) {
         def xcomp = vpRight * (x * pixelWidth - halfWidth)
         def ycomp = vpUp * (y * pixelHeight - halfHeight)
@@ -323,9 +293,15 @@ class Scene(objects: Array[(Form, Surface)],
         def color = rayColor(ray, 0)
 
         canvas.plot(x, y, color)
-        canvas.save(y)
       }
-    }
+      canvas.save(y)
+      if (y > canvas.height) {
+        dom.window.clearInterval(interval)
+        dom.console.log(""""That's All Folks!"""")
+      }
+      y+= 1
+    }, 0)
+    interval
   }
 
   def rayColor(ray: Ray, depth: Int): Color = {
