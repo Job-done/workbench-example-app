@@ -1,9 +1,10 @@
 package example
 
+import org.scalajs.dom.{Element, html}
+import rx.{Ctx, Rx}
 import scalatags.JsDom.all._
+
 import scala.util.{Failure, Success}
-import rx._
-import org.scalajs.dom.{html, Element}
 
 /**
  * A minimal binding between Scala.Rx and Scalatags and Scala-Js-Dom
@@ -27,7 +28,7 @@ object Framework {
   implicit def rxMod[T <: html.Element](r: Rx[HtmlTag])(implicit ctx: Ctx.Owner): Frag = {
     def rSafe = r.toTry match {
       case Success(v) => v.render
-      case Failure(e) => span(e.toString, backgroundColor := "red").render
+      case Failure(e) => span(e.getMessage, backgroundColor := "red").render
     }
     var last = rSafe
     r.trigger {

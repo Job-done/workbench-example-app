@@ -1,11 +1,11 @@
 package example
 
 import org.scalajs.dom
+import rx.{Ctx, Rx, Var}
 import scalatags.JsDom.all._
-
 import scalatags.JsDom.tags2.section
-import rx._
-import scala.scalajs.js.annotation._
+
+import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 
 
 case class Task(txt: Var[String], done: Var[Boolean])
@@ -27,7 +27,7 @@ object ScalaJSExample {
   val filter = Var("All")
 
   val filters = Map[String, Task => Boolean](
-    ("All", t => true),
+    ("All", _ => true),
     ("Active", !_.done.now),
     ("Completed", _.done.now)
   )
@@ -78,7 +78,7 @@ object ScalaJSExample {
                 li(
                   `class` := Rx{
                     if (task.done()) "completed"
-                    else if (editing() == Some(task)) "editing"
+                    else if (editing().contains(task)) "editing"
                     else ""
                   },
                   div(`class` := "view")(
@@ -90,7 +90,7 @@ object ScalaJSExample {
                       `type` := "checkbox",
                       cursor := "pointer",
                       onchange := { () =>
-                        task.done() = !(task.done.now)
+                        task.done() = !task.done.now
                       },
                       if (task.done()) checked := true
                     ),
@@ -117,7 +117,7 @@ object ScalaJSExample {
             span(id:="todo-count")(strong(notDone), " item left"),
 
             ul(id:="filters")(
-              for ((name, pred) <- filters.toSeq) yield {
+              for ((name, _) <- filters.toSeq) yield {
                 li(a(
                   `class`:=Rx{
                     if(name == filter()) "selected"
