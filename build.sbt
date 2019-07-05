@@ -11,11 +11,3 @@ libraryDependencies ++= Seq(
   "org.scala-lang.modules" %% "scala-async" % "0.10.0",
   "com.nativelibs4java" %% "scalaxy-streams" % "0.3.4" % "provided"*/
 )
-
-/*
-resolvers += Resolver.sonatypeRepo("snapshots")
-
-bootSnippet := "example.ScalaJSExample().main();"
-
-updateBrowsers <<= updateBrowsers.triggeredBy(fullOptJS in Compile)
-*/
