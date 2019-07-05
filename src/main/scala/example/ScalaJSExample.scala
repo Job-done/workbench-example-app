@@ -3,7 +3,7 @@ package example
 import org.scalajs.dom
 import org.scalajs.dom.raw.ImageData
 
-import scala.language.{implicitConversions, postfixOps}
+import scala.language.{existentials, implicitConversions, postfixOps}
 import scala.math.{Pi, abs, cos, sin, sqrt, tan}
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 
@@ -19,6 +19,7 @@ import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
 
 @JSExportTopLevel("ScalaJSExample")
 object ScalaJSExample {
+  val execStart: Long = System.currentTimeMillis()
   private type Color = Vec
   private val Epsilon = 0.00001
   private val Color: Vec.type = Vec
@@ -29,6 +30,11 @@ object ScalaJSExample {
 
   private val ctx: dom.CanvasRenderingContext2D =
     canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
+
+  def logInfo(info: String) = {
+    dom.console.log(f"[Info][${System.currentTimeMillis() - execStart}%5d ms]" + info)
+  }
+
 
   @JSExport
   def main(): Unit = {
@@ -53,6 +59,7 @@ object ScalaJSExample {
               ray.vector * r + normal * (r * c - sqrt(sqrtValue))
             } else {
               def perp = ray.vector dot normal
+
               Vec.denormalizer(ray.vector) + normal * 2 * perp
             }
 
@@ -93,7 +100,7 @@ object ScalaJSExample {
         Plane((-6, 0, 0), (1, 0, 0)) -> Flat((1, 1, 0.9)),
         Plane((0, 0, 6), (0, 0, 1)) -> Flat((0.9, 0.9, 1))
       ) ++ spiral ++ drops,
-        lightPoints = Array(
+        lightPoints = Seq(
           Light((0, -3, 0), (3, 3, 0)),
           Light((3, 3, 0), (0, 3, 3)),
           Light((-3, 3, 0), (3, 0, 3))
@@ -133,16 +140,58 @@ object ScalaJSExample {
     def plot(x: Int, y: Int, rgb: Color): Unit
   }
 
-  case class Flat(baseColor: Color = Color(1, 1, 1),
-                  specularC: Double = 0.3,
-                  lambertC: Double = 0.6) extends SolidSurface {
-    def baseColorAt(p: Vec): Color = baseColor
-  }
-
   abstract class Form {
     def intersectionTime(ray: Ray): Double
 
     def normalAt(p: Vec): Vec
+  }
+
+  abstract class SolidSurface extends Surface {
+    val specularC: Double
+
+    def baseColorAt(p: Vec): Color
+
+    def lambertC: Double
+
+    def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
+      val b = baseColorAt(p)
+      val specular = {
+        val reflectedRay = Ray(p, ray.vector.reflectThrough(normal))
+        val reflectedColor = scene.rayColor(reflectedRay, depth)
+        reflectedColor * specularC
+      }
+      val lambert = {
+        var lambertAmount = Vec(0, 0, 0)
+        for (light <- scene.lightPoints) {
+          if (scene.lightIsVisible(light.center, p)) {
+            val d = p - light.center
+
+            def dLengthSqr = d.magnitude * d.magnitude
+
+            def contribution = light.color * abs(d dot normal / dLengthSqr)
+
+            lambertAmount += contribution
+          }
+        }
+        b * lambertAmount * lambertC
+      }
+
+      def ambientC: Double = 1.0 - specularC - lambertC
+      def ambient = b * ambientC
+
+      specular + lambert + ambient
+    }
+
+  }
+
+  abstract class Surface {
+    def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color
+  }
+
+  case class Flat(baseColor: Color = Color(1, 1, 1),
+                  specularC: Double = 0.3,
+                  lambertC: Double = 0.6) extends SolidSurface {
+    def baseColorAt(p: Vec): Color = baseColor
   }
 
   case class Light(center: Vec, color: Color)
@@ -161,7 +210,7 @@ object ScalaJSExample {
   }
 
   class Scene(objects: Seq[(Form, Surface)],
-              val lightPoints: Array[Light],
+              val lightPoints: Seq[Light],
               position: Vec,
               lookingAt: Vec,
               fieldOfView: Double) {
@@ -203,7 +252,7 @@ object ScalaJSExample {
         canvas.save(y)
         if (y > canvas.height) {
           dom.window.clearInterval(interval)
-          dom.console.log(""""That's All Folks!"""")
+          logInfo(""""That's All Folks!"""")
         }
         y += 1
       }, 0)
@@ -213,14 +262,11 @@ object ScalaJSExample {
     def rayColor(ray: Ray, depth: Int): Color = {
       if (depth > 3) (0, 0, 0)
       else {
-        var (minT, minO, minS) = (-1.0, null: Form, null: Surface)
-        for (i <- objects.indices) {
-          val (o, s) = objects(i)
-          val t = o.intersectionTime(ray)
-          if (t > ScalaJSExample.Epsilon && (t < minT || minT < 0)) {
-            minT = t
-            minO = o
-            minS = s
+        val (minT, minO, minS) = objects.foldLeft(-1.0.toDouble, null: Form, null: Surface) {
+          case (maxColor, (o, s)) => {
+            val t = o.intersectionTime(ray)
+            if (t > ScalaJSExample.Epsilon && (t < maxColor._1 || maxColor._1 < 0)) (t, o, s)
+            else maxColor
           }
         }
         minT match {
@@ -233,45 +279,6 @@ object ScalaJSExample {
     }
   }
 
-  abstract class SolidSurface extends Surface {
-    val specularC: Double
-
-    def baseColorAt(p: Vec): Color
-    def lambertC: Double
-    def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
-      val b = baseColorAt(p)
-
-      val specular = {
-        val reflectedRay = Ray(p, ray.vector.reflectThrough(normal))
-        val reflectedColor = scene.rayColor(reflectedRay, depth)
-        reflectedColor * specularC
-      }
-
-      val lambert = {
-        var lambertAmount = Vec(0, 0, 0)
-        for (i <- scene.lightPoints.indices) {
-          val light = scene.lightPoints(i)
-          if (scene.lightIsVisible(light.center, p)) {
-            val d = p - light.center
-
-            def dLengthSqr = d.magnitude * d.magnitude
-
-            def contribution = light.color * abs(d dot normal / dLengthSqr)
-
-            lambertAmount += contribution
-          }
-        }
-        b * lambertAmount * lambertC
-      }
-
-      def ambientC: Double = 1.0 - specularC - lambertC
-      def ambient = b * ambientC
-
-      specular + lambert + ambient
-    }
-
-  }
-
   case class Sphere(center: Vec, radius: Double) extends Form {
     def intersectionTime(ray: Ray): Double = {
       val cp = center - ray.point
@@ -281,10 +288,6 @@ object ScalaJSExample {
     }
 
     def normalAt(p: Vec): Color = (p - center).normalized
-  }
-
-  abstract class Surface {
-    def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color
   }
 
   final case class Vec(x: Double, y: Double, z: Double) {
