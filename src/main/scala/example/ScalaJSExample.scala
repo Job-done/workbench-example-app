@@ -25,10 +25,7 @@ object ScalaJSExample {
   val Epsilon = 0.00001
   val Color: Vec.type = Vec
 
-  val canvas: dom.html.Canvas = dom.document
-    .getElementById("canvas")
-    .asInstanceOf[dom.html.Canvas]
-
+  val canvas = dom.document.getElementById("canvas").asInstanceOf[dom.html.Canvas]
   canvas.width = 1024
   canvas.height = 1024
 
@@ -37,26 +34,45 @@ object ScalaJSExample {
 
   @JSExport
   def main(): Unit = {
-    val spiral = for (i <- 0 until 11) yield {
-      val theta = i * (i + 5) * Pi / 100 + 0.3
-      val center = (0 - 4 * sin(theta), 1.5 - i / 2.0, 0 - 4 * cos(theta))
-      val form = Sphere(center, 0.3 + i * 0.1)
-      val surface = Flat((i / 6.0, 1 - i / 6.0, 0.5))
-      (form, surface)
-    }
+    def s: Scene = {
+      def spiral = for (i <- 0 until 11) yield {
+        val theta = i * (i + 5) * Pi / 100 + 0.3
+        def center = (0 - 4 * sin(theta), 1.5 - i / 2.0, 0 - 4 * cos(theta))
+        def form = Sphere(center, 0.3 + i * 0.1)
+        def surface = Flat((i / 6.0, 1 - i / 6.0, 0.5))
 
-    val drops = Array(
-      Sphere((2.5, 2.5, -8), 0.3),
-      Sphere((1.5, 2.2, -7), 0.25),
-      Sphere((-1.3, 0.8, -8.5), 0.15),
-      Sphere((0.5, -2.5, -7.5), 0.2),
-      Sphere((-1.8, 2.3, -7.5), 0.3),
-      Sphere((-1.8, -2.3, -7.5), 0.3),
-      Sphere((1.3, 0.0, -8), 0.25)
-    ).map(_ -> Refractor())
+        (form, surface)
+      }
 
-    val s = new Scene(
-      objects = Array(
+      def drops = {
+        case class Refractor(refractiveIndex: Double = 0.5) extends Surface {
+          def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
+            val r = if ((normal dot ray.vector) < 0) refractiveIndex else 1.0 / refractiveIndex
+            val c = (normal * -1) dot ray.vector
+            val sqrtValue = 1 - r * r * (1 - c * c)
+
+            def refractedOrreflected = if (sqrtValue > 0) {
+              ray.vector * r + normal * (r * c - sqrt(sqrtValue))
+            } else {
+              def perp = ray.vector dot normal
+              Vec.denormalizer(ray.vector) + normal * 2 * perp
+            }
+
+            scene.rayColor(Ray(p, refractedOrreflected), depth)
+          }
+        }
+
+        Seq(
+        Sphere((2.5, 2.5, -8), 0.3),
+        Sphere((1.5, 2.2, -7), 0.25),
+        Sphere((-1.3, 0.8, -8.5), 0.15),
+        Sphere((0.5, -2.5, -7.5), 0.2),
+        Sphere((-1.8, 2.3, -7.5), 0.3),
+        Sphere((-1.8, -2.3, -7.5), 0.3),
+        Sphere((1.3, 0.0, -8), 0.25)
+      ).map(_ -> Refractor())}
+
+      new Scene(objects = Seq(
         Sphere((0, 0, 0), 2) -> Flat((1, 1, 1), specularC = 0.6, lambertC = 0.4),
         Plane((0, 4, 0), (0, 1, 0)) -> Checked(),
         Plane((0, -4, 0), (0, 1, 0)) -> Flat((0.9, 1, 1)),
@@ -72,10 +88,9 @@ object ScalaJSExample {
       position = (0, 0, -15),
       lookingAt = (0, 0, 0),
       fieldOfView = 45.0
-    )
+    )}
 
-
-    val c: Canvas = new Canvas {
+    def c: Canvas = new Canvas {
       val width = math.min(canvas.width, canvas.height)
       val height = math.min(canvas.width, canvas.height)
       val data: ImageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
@@ -95,7 +110,6 @@ object ScalaJSExample {
     }
     s.render(c)
   }
-}
 
 final case class Vec(x: Double, y: Double, z: Double) {
   def +(o: Vec) = Vec(x + o.x, y + o.y, z + o.z)
@@ -172,9 +186,9 @@ abstract class Surface {
 }
 
 abstract class SolidSurface extends Surface {
-  def ambientC: Double = 1.0 - specularC - lambertC
-  def baseColorAt(p: Vec): Color
   val specularC: Double
+
+  def baseColorAt(p: Vec): Color
   def lambertC: Double
 
   def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
@@ -192,6 +206,7 @@ abstract class SolidSurface extends Surface {
         val light = scene.lightPoints(i)
         if (scene.lightIsVisible(light.center, p)) {
           val d = p - light.center
+
           def dLengthSqr = d.magnitude * d.magnitude
           def contribution = light.color * abs(d dot normal / dLengthSqr)
 
@@ -201,28 +216,15 @@ abstract class SolidSurface extends Surface {
       b * lambertAmount * lambertC
     }
 
+    def ambientC: Double = 1.0 - specularC - lambertC
     def ambient = b * ambientC
 
     specular + lambert + ambient
   }
+
 }
 
-case class Refractor(refractiveIndex: Double = 0.5) extends Surface {
-  def colorAt(scene: Scene, ray: Ray, p: Vec, normal: Vec.Unit, depth: Int): Color = {
-    val r = if ((normal dot ray.vector) < 0) refractiveIndex else 1.0 / refractiveIndex
-    val c = (normal * -1) dot ray.vector
-    val sqrtValue = 1 - r * r * (1 - c * c)
 
-    if (sqrtValue > 0) {
-      def refracted = ray.vector * r + normal * (r * c - sqrt(sqrtValue))
-      scene.rayColor(Ray(p, refracted), depth)
-    } else {
-      def perp = ray.vector dot normal
-      def reflected: Vec = Vec.denormalizer(ray.vector) + normal * 2 * perp
-      scene.rayColor(Ray(p, reflected), depth)
-    }
-  }
-}
 
 case class Flat(baseColor: Color = Color(1, 1, 1),
                 specularC: Double = 0.3,
@@ -246,12 +248,15 @@ case class Checked(baseColor: Color = Color(1, 1, 1),
 
 abstract class Canvas {
   def width: Int
+
   def height: Int
+
   def save(y: Int): Unit
+
   def plot(x: Int, y: Int, rgb: Color): Unit
 }
 
-class Scene(objects: Array[(Form, Surface)],
+class Scene(objects: Seq[(Form, Surface)],
             val lightPoints: Array[Light],
             position: Vec,
             lookingAt: Vec,
@@ -260,7 +265,7 @@ class Scene(objects: Array[(Form, Surface)],
   def lightIsVisible(l: Vec, p: Vec): Boolean = {
     val (ray, length) = (Ray(p, l - p), (l - p).magnitude)
 
-    objects.forall{ case (o: Form, _: Surface) =>
+    objects.forall { case (o: Form, _: Surface) =>
       val t: Double = o.intersectionTime(ray)
       t <= ScalaJSExample.Epsilon || t >= length - ScalaJSExample.Epsilon
     }
@@ -270,22 +275,20 @@ class Scene(objects: Array[(Form, Surface)],
     def fovRadians = Pi * (fieldOfView / 2.0) / 180.0
 
     val halfWidth = tan(fovRadians)
-    def halfHeight = halfWidth
-
-    def width = halfWidth * 2
-    def height = halfHeight * 2
-
-    def pixelWidth = width / (canvas.width - 1)
-
-    def pixelHeight = height / (canvas.height - 1)
-
     val eye = Ray(position, lookingAt - position)
     val vpRight = eye.vector.cross((0, 1, 0)).normalized
+
+
+    def halfHeight = halfWidth
+    def width = halfWidth * 2
+    def height = halfHeight * 2
+    def pixelWidth = width / (canvas.width - 1)
+    def pixelHeight = height / (canvas.height - 1)
 
     def vpUp = vpRight.cross(eye.vector).normalized
 
     var y = 0
-    val interval: Int = dom.window.setInterval({ () =>
+    lazy val interval: Int = dom.window.setInterval({ () =>
       for (x <- 0 until canvas.width) {
         def xcomp = vpRight * (x * pixelWidth - halfWidth)
         def ycomp = vpUp * (y * pixelHeight - halfHeight)
@@ -299,7 +302,7 @@ class Scene(objects: Array[(Form, Surface)],
         dom.window.clearInterval(interval)
         dom.console.log(""""That's All Folks!"""")
       }
-      y+= 1
+      y += 1
     }, 0)
     interval
   }
@@ -325,4 +328,5 @@ class Scene(objects: Array[(Form, Surface)],
       }
     }
   }
+}
 }
