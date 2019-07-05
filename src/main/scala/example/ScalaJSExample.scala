@@ -16,19 +16,16 @@ case class Point(x: Double, y: Double){
 @JSExport
 object ScalaJSExample {
   val canvas =
-    dom.document
-       .getElementById("canvas")
-       .asInstanceOf[html.Canvas]
+    dom.document.getElementById("canvas").asInstanceOf[html.Canvas]
 
   val ctx =
-    canvas.getContext("2d")
-          .asInstanceOf[dom.CanvasRenderingContext2D]
+    canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
 
-  canvas.height = dom.innerHeight
-  canvas.width = dom.innerWidth
+  canvas.height = dom.window.innerHeight.toInt
+  canvas.width = dom.window.innerWidth.toInt
 
   var count = 0
-  var player = Point(dom.innerWidth / 2, dom.innerHeight / 2)
+  var player = Point(dom.window.innerWidth / 2, dom.window.innerHeight / 2)
   val corners = Seq(Point(255, 255), Point(0, 255), Point(128, 0))
 
   var bullets = Seq.empty[Point]
@@ -94,15 +91,15 @@ object ScalaJSExample {
   def main(): Unit = {
 
     dom.console.log("main")
-    dom.onkeypress = {(e: dom.KeyboardEvent) =>
+    dom.window.onkeypress = {(e: dom.KeyboardEvent) =>
       if (e.keyCode.toInt == 32) bullets = player +: bullets
     }
-    dom.onkeydown = {(e: dom.KeyboardEvent) =>
+    dom.window.onkeydown = {(e: dom.KeyboardEvent) =>
       keysDown.add(e.keyCode.toInt)
     }
-    dom.onkeyup = {(e: dom.KeyboardEvent) =>
+    dom.window.onkeyup = {(e: dom.KeyboardEvent) =>
       keysDown.remove(e.keyCode.toInt)
     }
-    dom.setInterval(() => {run; draw}, 20)
+    dom.window.setInterval(() => {run; draw}, 20)
   }
 }
