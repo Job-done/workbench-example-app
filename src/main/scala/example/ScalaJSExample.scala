@@ -3,14 +3,10 @@ package example
 import org.scalajs.dom
 import org.scalajs.dom.raw.ImageData
 import org.scalajs.dom.{CanvasRenderingContext2D, html}
-import scalaxy.loops._
 
-import scala.async.Async.{async, await}
-import scala.concurrent.Future
 import scala.language.{implicitConversions, postfixOps}
 import scala.math.{Pi, abs, cos, sin, sqrt, tan}
 import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
-import scala.scalajs.concurrent.JSExecutionContext.Implicits.queue
 
 import ScalaJSExample.Color
 
@@ -20,6 +16,8 @@ import ScalaJSExample.Color
   * https://bitbucket.org/pypy/benchmarks/src/846fa56a282b/own/raytrace-simple.py?at=default
   *
   * Half the lines of code
+  *
+  * Author: https://github.com/lihaoyi
   */
 
 @JSExportTopLevel("ScalaJSExample")
@@ -205,7 +203,7 @@ abstract class SolidSurface extends Surface {
 
     val lambert = {
       var lambertAmount = Vec(0, 0, 0)
-      for (i <- scene.lightPoints.indices optimized) {
+      for (i <- scene.lightPoints.indices) {
         val light = scene.lightPoints(i)
         if (scene.lightIsVisible(light.center, p)) {
           val d = p - light.center
@@ -276,7 +274,7 @@ abstract class Canvas {
 
   def save(y: Int): Unit
 
-  def plot(x: Int, y: Int, rgb: Color)
+  def plot(x: Int, y: Int, rgb: Color): Unit
 }
 
 class Scene(objects: Array[(Form, Surface)],
@@ -289,7 +287,7 @@ class Scene(objects: Array[(Form, Surface)],
     val ray = Ray(p, l - p)
     val length = (l - p).magnitude
     var visible = true
-    for (i <- objects.indices optimized) {
+    for (i <- objects.indices) {
       val (o, _) = objects(i)
       val t = o.intersectionTime(ray)
       if (t > ScalaJSExample.Epsilon && t < length - ScalaJSExample.Epsilon) visible = false
@@ -297,7 +295,7 @@ class Scene(objects: Array[(Form, Surface)],
     visible
   }
 
-  def render(canvas: Canvas): Future[Unit] = async {
+  def render(canvas: Canvas) = {
     def fovRadians = Pi * (fieldOfView / 2.0) / 180.0
 
     val halfWidth = tan(fovRadians)
@@ -316,19 +314,16 @@ class Scene(objects: Array[(Form, Surface)],
 
     def vpUp = vpRight.cross(eye.vector).normalized
 
-    for (y <- 0 until canvas.height optimized) {
-      if (y % 2 == 0) await(Future(()))
-      canvas.save(y)
-      for (x <- 0 until canvas.width optimized) {
+    for (y <- 0 until canvas.height) {
+      // if (y % 2 == 0) await(Future(()))
+      for (x <- 0 until canvas.width) {
         def xcomp = vpRight * (x * pixelWidth - halfWidth)
-
         def ycomp = vpUp * (y * pixelHeight - halfHeight)
-
         def ray = Ray(eye.point, xcomp + ycomp + eye.vector)
-
         def color = rayColor(ray, 0)
 
         canvas.plot(x, y, color)
+        canvas.save(y)
       }
     }
   }
@@ -337,7 +332,7 @@ class Scene(objects: Array[(Form, Surface)],
     if (depth > 3) (0, 0, 0)
     else {
       var (minT, minO, minS) = (-1.0, null: Form, null: Surface)
-      for (i <- objects.indices optimized) {
+      for (i <- objects.indices) {
         val (o, s) = objects(i)
         val t = o.intersectionTime(ray)
         if (t > ScalaJSExample.Epsilon && (t < minT || minT < 0)) {
