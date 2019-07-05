@@ -12,7 +12,7 @@ import scala.scalajs.js.annotation.{JSExport, JSExportTopLevel}
   *
   * https://bitbucket.org/pypy/benchmarks/src/846fa56a282b/own/raytrace-simple.py?at=default
   *
-  * Half the lines of code
+  * Half the lines of code, loc: 258
   *
   * Author: https://github.com/lihaoyi
   */
@@ -31,7 +31,7 @@ object ScalaJSExample {
   private val ctx: dom.CanvasRenderingContext2D =
     canvas.getContext("2d").asInstanceOf[dom.CanvasRenderingContext2D]
 
-  def logInfo(info: String) = {
+  def logInfo(info: String): Unit = {
     dom.console.log(f"[Info][${System.currentTimeMillis() - execStart}%5d ms]" + info)
   }
 
@@ -263,11 +263,10 @@ object ScalaJSExample {
       if (depth > 3) (0, 0, 0)
       else {
         val (minT, minO, minS) = objects.foldLeft(-1.0.toDouble, null: Form, null: Surface) {
-          case (maxColor, (o, s)) => {
+          case (maxColor, (o, s)) =>
             val t = o.intersectionTime(ray)
             if (t > ScalaJSExample.Epsilon && (t < maxColor._1 || maxColor._1 < 0)) (t, o, s)
             else maxColor
-          }
         }
         minT match {
           case -1 => (0, 0, 0)
