@@ -21,7 +21,7 @@ object ScalaJSExample {
 
     var (count, p) = (0, Point(0, 0))
 
-    def run = (0 until 10).foreach { _ =>
+    def run() = (0 until 10).foreach { _ =>
 
       def clear() = {
         ctx.fillStyle = "black"
@@ -38,6 +38,6 @@ object ScalaJSExample {
       ctx.fillRect(p.x, p.y, 1, 1)
     }
 
-    dom.window.setInterval(() => run, 50)
+    dom.window.setInterval(() => run(), 50)
   }
 }
