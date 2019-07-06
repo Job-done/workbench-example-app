@@ -2,11 +2,10 @@ enablePlugins(ScalaJSPlugin, WorkbenchPlugin)
 
 name := "Example"
 
-version := "0.1-SNAPSHOT"
+version := "0.2-SNAPSHOT"
 
 scalaVersion := "2.13.0"
 
 libraryDependencies ++= Seq(
-  "org.scala-js" %%% "scalajs-dom" % "0.9.7",
   "com.lihaoyi" %%% "scalatags" % "0.7.0"
 )
