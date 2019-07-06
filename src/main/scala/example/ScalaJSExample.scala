@@ -44,8 +44,7 @@ object ScalaJSExample {
           def owmQueryParams = scala.collection.Map[String, String](
             "type" -> "like"
             , "mode" -> "json"
-            //,"apikey" -> "<Paste your own API Key value here>"
-            , "apikey" -> "9ff16c79edd6ad12396c22ed8a7996ec"
+            ,"apikey" -> "<Paste your own API Key value here>"
           )
 
           def queryMap = Map("q" -> query) ++ owmQueryParams
